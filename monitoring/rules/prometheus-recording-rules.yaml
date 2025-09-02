@@ -1,0 +1,99 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: a2a-recording-rules
+  namespace: multi-agent-a2a
+  labels:
+    app: prometheus
+    component: monitoring
+spec:
+  groups:
+  - name: a2a.rules
+    interval: 30s
+    rules:
+    # Request rate metrics for HPA
+    - record: a2a:request_rate_5m
+      expr: rate(a2a_requests_total[5m])
+      labels:
+        metric_type: "request_rate"
+    
+    - record: a2a:requests_per_second
+      expr: sum(rate(a2a_requests_total[1m])) by (agent_name)
+      labels:
+        metric_type: "requests_per_second"
+    
+    # Error rate metrics
+    - record: a2a:error_rate_5m
+      expr: rate(a2a_errors_total[5m]) / rate(a2a_requests_total[5m])
+      labels:
+        metric_type: "error_rate"
+    
+    # Response time metrics
+    - record: a2a:response_time_p95
+      expr: histogram_quantile(0.95, rate(a2a_request_duration_seconds_bucket[5m]))
+      labels:
+        metric_type: "response_time_p95"
+    
+    - record: a2a:response_time_p99
+      expr: histogram_quantile(0.99, rate(a2a_request_duration_seconds_bucket[5m]))
+      labels:
+        metric_type: "response_time_p99"
+    
+    # Active tasks per agent
+    - record: a2a:active_tasks_per_agent
+      expr: sum(a2a_active_tasks) by (agent_name)
+      labels:
+        metric_type: "active_tasks"
+    
+    # Agent health metrics
+    - record: a2a:agent_up
+      expr: up{job=~".*agent.*"}
+      labels:
+        metric_type: "agent_health"
+    
+    # Resource utilization
+    - record: a2a:cpu_utilization_avg
+      expr: avg(rate(container_cpu_usage_seconds_total[5m])) by (pod, namespace)
+      labels:
+        metric_type: "cpu_utilization"
+    
+    - record: a2a:memory_utilization_avg
+      expr: avg(container_memory_working_set_bytes / container_spec_memory_limit_bytes) by (pod, namespace)
+      labels:
+        metric_type: "memory_utilization"
+
+  - name: a2a.alerts
+    interval: 30s
+    rules:
+    # High error rate alert
+    - alert: HighErrorRate
+      expr: a2a:error_rate_5m > 0.1
+      for: 2m
+      labels:
+        severity: warning
+        component: a2a-agent
+      annotations:
+        summary: "High error rate detected for A2A agent"
+        description: "Agent {{ $labels.agent_name }} has error rate of {{ $value | humanizePercentage }}"
+    
+    # High response time alert
+    - alert: HighResponseTime
+      expr: a2a:response_time_p95 > 5
+      for: 2m
+      labels:
+        severity: warning
+        component: a2a-agent
+      annotations:
+        summary: "High response time detected"
+        description: "95th percentile response time is {{ $value }}s"
+    
+    # Agent down alert
+    - alert: AgentDown
+      expr: a2a:agent_up == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: a2a-agent
+      annotations:
+        summary: "A2A Agent is down"
+        description: "Agent {{ $labels.agent_name }} has been down for more than 1 minute"

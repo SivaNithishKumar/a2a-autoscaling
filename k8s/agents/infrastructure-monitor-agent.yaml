@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infrastructure-monitor-agent
+  namespace: multi-agent-a2a
+  labels:
+    app: infrastructure-monitor-agent
+    component: ai-ops-agent
+    version: v1.0.0
+    tier: monitoring
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: infrastructure-monitor-agent
+  template:
+    metadata:
+      labels:
+        app: infrastructure-monitor-agent
+        component: ai-ops-agent
+        version: v1.0.0
+        tier: monitoring
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: infrastructure-monitor-agent
+        image: a2a-infrastructure-monitor-agent:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8005
+          name: http
+        - containerPort: 8085
+          name: metrics
+        env:
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: AGENT_PORT
+          value: "8005"
+        - name: METRICS_PORT
+          value: "8085"
+        - name: AGENT_HOST
+          value: "0.0.0.0"
+        - name: MONITORING_INTERVAL
+          value: "30"
+        - name: ANOMALY_DETECTION_ENABLED
+          value: "true"
+        - name: PREDICTION_MODEL_ACCURACY
+          value: "0.92"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "800m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8005
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /.well-known/agent-card.json
+            port: 8005
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # Security and performance configuration
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: monitoring-data
+          mountPath: /app/data
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+      - name: monitoring-data
+        emptyDir:
+          sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infrastructure-monitor-service
+  namespace: multi-agent-a2a
+  labels:
+    app: infrastructure-monitor-agent
+    tier: monitoring
+spec:
+  selector:
+    app: infrastructure-monitor-agent
+  ports:
+  - name: http
+    port: 8005
+    targetPort: 8005
+    protocol: TCP
+  - name: metrics
+    port: 8085
+    targetPort: 8085
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: infrastructure-monitor-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: infrastructure-monitor-agent
+spec:
+  selector:
+    matchLabels:
+      app: infrastructure-monitor-agent
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics

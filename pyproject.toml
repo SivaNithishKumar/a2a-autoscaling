@@ -1,0 +1,119 @@
+[project]
+name = "multi-agent-a2a"
+version = "0.3.0"
+description = "Distributed Multi-Agent System using A2A Protocol - Following A2A Samples Architecture"
+authors = [
+    { name = "Multi-Agent A2A Team", email = "team@multi-agent-a2a.com" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    # A2A Core Dependencies (Aligned with samples)
+    "a2a-sdk>=0.3.0",
+    "httpx>=0.28.1",
+    "httpx-sse>=0.4.0",
+    "pydantic>=2.11.0",
+    "sse-starlette>=2.2.1",
+    "starlette>=0.46.1",
+    "typing-extensions>=4.12.2",
+    "uvicorn>=0.34.0",
+    # Authentication and Security
+    "jwcrypto>=1.5.6",
+    "pyjwt>=2.10.1",
+    # LLM and AI Dependencies
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langsmith>=0.1.0",
+    "openai>=1.0.0",
+    # Core Utilities
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.10.0",
+    "click>=8.0.0",
+    "websockets>=12.0",
+    "pydantic-settings>=2.0.0",
+    # Logging and Monitoring
+    "structlog>=23.0.0",
+    "prometheus-client>=0.20.0",
+    "grafana-client>=3.0.0",
+    "psutil>=5.9.0",
+    "flask>=3.1.2",
+    "flask-socketio>=5.5.1",
+    "eventlet>=0.40.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-httpx>=0.30.0",
+    "black>=24.0.0",
+    "mypy>=1.11.0",
+    "ruff>=0.6.0",
+    "pre-commit>=3.8.0",
+]
+
+# Host-specific optional dependencies
+cli = [
+    "rich>=13.0.0",
+    "typer>=0.12.0",
+]
+
+web = [
+    "gradio>=4.0.0",
+    "streamlit>=1.32.0",
+]
+
+# Framework-specific optional dependencies (for future extensions)
+langgraph = [
+    "langgraph>=0.2.0",
+    "langchain-google-genai>=2.0.0",
+]
+
+crewai = [
+    "crewai>=0.28.0",
+]
+
+# UV Workspace Configuration (Following A2A Samples Pattern)
+[tool.uv.workspace]
+members = [
+    "src/multi_agent_a2a/agents/base",
+    "src/multi_agent_a2a/agents/calculator", 
+    "src/multi_agent_a2a/agents/weather",
+    "src/multi_agent_a2a/agents/research",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/multi_agent_a2a"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C", "N", "UP", "B", "SIM", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

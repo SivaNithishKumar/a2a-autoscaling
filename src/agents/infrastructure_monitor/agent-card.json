@@ -1,0 +1,97 @@
+{
+  "name": "Infrastructure Monitoring Agent",
+  "description": "AI-powered infrastructure monitoring agent with anomaly detection, predictive failure analysis, and intelligent alerting capabilities",
+  "version": "1.0.0",
+  "author": "Siva Nithish Kumar",
+  "email": "sivanithishkumar12@gmail.com",
+  "capabilities": [
+    {
+      "id": "monitor_infrastructure",
+      "name": "Monitor Infrastructure",
+      "description": "Comprehensive real-time infrastructure monitoring with health analysis and performance insights",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "services": {"type": "array", "items": {"type": "string"}, "description": "Specific services to monitor"},
+          "metrics": {"type": "array", "items": {"type": "string"}, "description": "Specific metrics to analyze"},
+          "time_range": {"type": "string", "description": "Time range for monitoring analysis (e.g., '1h', '24h', '7d')"},
+          "include_recommendations": {"type": "boolean", "description": "Include optimization recommendations"}
+        },
+        "required": []
+      },
+      "examples": [
+        "Monitor infrastructure health and performance across all services",
+        "Provide comprehensive status report with performance insights",
+        "Analyze current infrastructure metrics and identify issues",
+        "Generate infrastructure health dashboard with real-time metrics"
+      ]
+    },
+    {
+      "id": "detect_anomalies",
+      "name": "Detect Anomalies",
+      "description": "AI-powered anomaly detection with intelligent pattern recognition and severity classification",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "service_filter": {"type": "array", "items": {"type": "string"}, "description": "Filter anomaly detection to specific services"},
+          "sensitivity": {"type": "string", "enum": ["low", "medium", "high"], "description": "Anomaly detection sensitivity level"},
+          "time_window": {"type": "string", "description": "Time window for anomaly analysis"},
+          "include_predictions": {"type": "boolean", "description": "Include impact predictions for detected anomalies"}
+        },
+        "required": []
+      },
+      "examples": [
+        "Detect anomalies in service performance and behavior",
+        "Identify unusual patterns in infrastructure metrics",
+        "Analyze system behavior for abnormal conditions",
+        "Find performance anomalies with high confidence scores"
+      ]
+    },
+    {
+      "id": "predict_failures",
+      "name": "Predict Failures",
+      "description": "Predictive failure analysis using machine learning models with proactive recommendations",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "prediction_horizon": {"type": "string", "description": "Time horizon for failure predictions (e.g., '4h', '24h', '7d')"},
+          "risk_threshold": {"type": "number", "minimum": 0, "maximum": 1, "description": "Minimum risk probability to include in predictions"},
+          "service_priority": {"type": "array", "items": {"type": "string"}, "description": "Prioritize predictions for specific services"},
+          "include_mitigation": {"type": "boolean", "description": "Include detailed mitigation strategies"}
+        },
+        "required": []
+      },
+      "examples": [
+        "Predict potential system failures before they occur",
+        "Analyze failure risks and provide early warnings",
+        "Generate proactive maintenance recommendations",
+        "Forecast resource exhaustion and capacity issues"
+      ]
+    }
+  ],
+  "communication": {
+    "protocol": "a2a",
+    "version": "1.0",
+    "supported_formats": ["json", "text"],
+    "streaming": true,
+    "async": true
+  },
+  "system_requirements": {
+    "min_memory": "1GB",
+    "recommended_memory": "2GB",
+    "cpu_cores": 2,
+    "storage": "500MB"
+  },
+  "health_check": {
+    "endpoint": "/health",
+    "interval": 30,
+    "timeout": 5
+  },
+  "metrics": {
+    "endpoint": "/metrics",
+    "port": 8085,
+    "format": "prometheus"
+  },
+  "tags": ["infrastructure", "monitoring", "anomaly-detection", "predictive-analytics", "ai-ops"],
+  "category": "monitoring"
+}

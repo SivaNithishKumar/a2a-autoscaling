@@ -1,0 +1,151 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: base-agent-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: base-agent
+spec:
+  selector:
+    matchLabels:
+      app: base-agent
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: calculator-agent-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: calculator-agent
+spec:
+  selector:
+    matchLabels:
+      app: calculator-agent
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: weather-agent-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: weather-agent
+spec:
+  selector:
+    matchLabels:
+      app: weather-agent
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: research-agent-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: research-agent
+spec:
+  selector:
+    matchLabels:
+      app: research-agent
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: move-orchestrator-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: move-orchestrator-agent
+spec:
+  selector:
+    matchLabels:
+      app: move-orchestrator-agent
+  endpoints:
+  - port: metrics
+    interval: 15s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: infrastructure-monitor-servicemonitor
+  namespace: multi-agent-a2a
+  labels:
+    app: infrastructure-monitor-agent
+spec:
+  selector:
+    matchLabels:
+      app: infrastructure-monitor-agent
+  endpoints:
+  - port: metrics
+    interval: 15s
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: multi-agent-a2a-rules
+  namespace: multi-agent-a2a
+  labels:
+    app: prometheus
+spec:
+  groups:
+  - name: multi-agent-a2a.rules
+    rules:
+    - alert: AgentDown
+      expr: up{job=~".*-agent.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Agent {{ $labels.job }} is down"
+        description: "Agent {{ $labels.job }} has been down for more than 1 minute."
+    
+    - alert: HighErrorRate
+      expr: rate(a2a_errors_total[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate on agent {{ $labels.agent_name }}"
+        description: "Agent {{ $labels.agent_name }} has an error rate of {{ $value }} errors per second."
+    
+    - alert: HighResponseTime
+      expr: histogram_quantile(0.95, rate(a2a_request_duration_seconds_bucket[5m])) > 5
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High response time on agent {{ $labels.agent_name }}"
+        description: "95th percentile response time is {{ $value }} seconds for agent {{ $labels.agent_name }}."
+    
+    - alert: HighActiveTaskCount
+      expr: a2a_active_tasks > 20
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High active task count on agent {{ $labels.agent_name }}"
+        description: "Agent {{ $labels.agent_name }} has {{ $value }} active tasks."
+    
+    - alert: InfrastructureAnomalyDetected
+      expr: increase(a2a_requests_total{agent_name="infrastructure_monitor", skill="detect_anomalies", status="success"}[1h]) > 5
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Multiple infrastructure anomalies detected"
+        description: "Infrastructure monitoring agent has detected {{ $value }} anomalies in the last hour."

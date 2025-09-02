@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calculator-agent
+  namespace: multi-agent-a2a
+  labels:
+    app: calculator-agent
+    component: agent
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: calculator-agent
+  template:
+    metadata:
+      labels:
+        app: calculator-agent
+        component: agent
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: calculator-agent
+        image: a2a-calculator-agent:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8081
+          name: http
+        - containerPort: 8081
+          name: metrics
+        env:
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: AGENT_PORT
+          value: "8081"
+        - name: AGENT_HOST
+          value: "0.0.0.0"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /.well-known/agent-card.json
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calculator-agent-service
+  namespace: multi-agent-a2a
+  labels:
+    app: calculator-agent
+spec:
+  selector:
+    app: calculator-agent
+  ports:
+  - name: http
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+  type: ClusterIP

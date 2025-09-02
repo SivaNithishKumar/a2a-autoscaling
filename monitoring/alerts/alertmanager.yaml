@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: multi-agent-a2a
+  labels:
+    app: alertmanager
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+        component: monitoring
+    spec:
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:latest
+        args:
+          - "--config.file=/etc/alertmanager/config.yml"
+          - "--storage.path=/alertmanager"
+          - "--web.external-url=http://localhost:9093"
+        ports:
+        - containerPort: 9093
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: alertmanager-config-volume
+          mountPath: /etc/alertmanager/
+        - name: alertmanager-storage-volume
+          mountPath: /alertmanager
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9093
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9093
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: alertmanager-config-volume
+        configMap:
+          name: alertmanager-config
+      - name: alertmanager-storage-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-service
+  namespace: multi-agent-a2a
+  labels:
+    app: alertmanager
+spec:
+  selector:
+    app: alertmanager
+  type: ClusterIP
+  ports:
+  - port: 9093
+    targetPort: 9093
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: multi-agent-a2a
+data:
+  config.yml: |
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alertmanager@multi-agent-a2a.local'
+    
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+    
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+    
+    - name: 'slack-notifications'
+      slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts'
+        title: 'Multi-Agent A2A Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    
+    - name: 'email-notifications'
+      email_configs:
+      - to: 'admin@multi-agent-a2a.local'
+        subject: 'Multi-Agent A2A Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+    
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'dev', 'instance']

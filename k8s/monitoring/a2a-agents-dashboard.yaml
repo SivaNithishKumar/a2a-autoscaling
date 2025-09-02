@@ -1,0 +1,200 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: a2a-agents-dashboard
+  namespace: multi-agent-a2a
+  labels:
+    grafana_dashboard: "1"
+data:
+  a2a-agents-overview.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "A2A Multi-Agent System Overview",
+        "tags": ["a2a", "agents", "multi-agent", "orchestration"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Agent Health Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=~\".*agent.*\"}",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "custom": {"displayMode": "list", "orientation": "horizontal"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "green", "value": 1}
+                  ]
+                },
+                "mappings": [
+                  {"options": {"0": {"text": "DOWN"}}, "type": "value"},
+                  {"options": {"1": {"text": "UP"}}, "type": "value"}
+                ]
+              }
+            },
+            "gridPos": {"h": 6, "w": 24, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Agent CPU Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{pod=~\".*agent.*\"}[5m]) * 100",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "unit": "percent",
+                "min": 0
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+          },
+          {
+            "id": 3,
+            "title": "Agent Memory Usage",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{pod=~\".*agent.*\"}",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "unit": "bytes",
+                "min": 0
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Agent Request Rate",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=~\".*agent.*\"}[5m])",
+                "legendFormat": "{{job}} - {{method}} {{status}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "unit": "reqps"
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}
+          },
+          {
+            "id": 5,
+            "title": "Agent Response Time",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~\".*agent.*\"}[5m]))",
+                "legendFormat": "{{job}} - 95th percentile"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=~\".*agent.*\"}[5m]))",
+                "legendFormat": "{{job}} - 50th percentile"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "unit": "s"
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14}
+          },
+          {
+            "id": 6,
+            "title": "HPA Scaling Events",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"multi-agent-a2a\"}",
+                "legendFormat": "{{horizontalpodautoscaler}} - Current"
+              },
+              {
+                "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"multi-agent-a2a\"}",
+                "legendFormat": "{{horizontalpodautoscaler}} - Desired"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "unit": "short"
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22}
+          },
+          {
+            "id": 7,
+            "title": "Agent Error Rate",
+            "type": "timeseries",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=~\".*agent.*\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=~\".*agent.*\"}[5m]) * 100",
+                "legendFormat": "{{job}} - Error Rate %"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "unit": "percent",
+                "min": 0
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22}
+          },
+          {
+            "id": 8,
+            "title": "Agent Orchestration Flow",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "increase(agent_orchestration_requests_total[5m])",
+                "legendFormat": "{{source_agent}} -> {{target_agent}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "custom": {"align": "auto", "displayMode": "auto"},
+                "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}
+              }
+            },
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "timepicker": {},
+        "templating": {"list": []},
+        "annotations": {"list": []},
+        "refresh": "30s",
+        "schemaVersion": 27,
+        "version": 1,
+        "links": []
+      }
+    }

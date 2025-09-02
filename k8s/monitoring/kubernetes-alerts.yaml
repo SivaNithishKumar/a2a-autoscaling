@@ -1,0 +1,123 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubernetes-cluster-alerts
+  namespace: multi-agent-a2a
+  labels:
+    app: prometheus
+    component: monitoring
+spec:
+  groups:
+  - name: kubernetes.cluster
+    rules:
+    - alert: KubernetesNodeReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kubernetes Node not ready (instance {{ $labels.instance }})"
+        description: "Node {{ $labels.node }} has been unready for a long time"
+
+    - alert: KubernetesMemoryPressure
+      expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kubernetes memory pressure (instance {{ $labels.instance }})"
+        description: "Node {{ $labels.node }} has MemoryPressure condition"
+
+    - alert: KubernetesDiskPressure
+      expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kubernetes disk pressure (instance {{ $labels.instance }})"
+        description: "Node {{ $labels.node }} has DiskPressure condition"
+
+    - alert: KubernetesOutOfDisk
+      expr: kube_node_status_condition{condition="OutOfDisk",status="true"} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kubernetes out of disk (instance {{ $labels.instance }})"
+        description: "Node {{ $labels.node }} has OutOfDisk condition"
+
+    - alert: KubernetesPodCrashLooping
+      expr: max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}[5m]) >= 1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kubernetes pod crash looping (instance {{ $labels.instance }})"
+        description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is crash looping"
+
+    - alert: KubernetesPodNotHealthy
+      expr: min_over_time(sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"})[15m:1m]) > 0
+      for: 0m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kubernetes Pod not healthy (instance {{ $labels.instance }})"
+        description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-running state for longer than 15 minutes."
+
+  - name: kubernetes.resources
+    rules:
+    - alert: KubernetesNodeHighCPU
+      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kubernetes Node high CPU (instance {{ $labels.instance }})"
+        description: "CPU load is > 80%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+    - alert: KubernetesNodeHighMemory
+      expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 80
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kubernetes Node high memory (instance {{ $labels.instance }})"
+        description: "Memory load is > 80%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+    - alert: KubernetesNodeHighDisk
+      expr: 100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} * 100) / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"}) > 80
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kubernetes Node high disk (instance {{ $labels.instance }})"
+        description: "Disk usage is > 80%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+  - name: a2a.agents
+    rules:
+    - alert: A2AAgentDown
+      expr: up{job=~".*agent.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "A2A Agent is down (instance {{ $labels.instance }})"
+        description: "A2A Agent {{ $labels.job }} has been down for more than 1 minute."
+
+    - alert: A2AAgentHighCPU
+      expr: rate(container_cpu_usage_seconds_total{pod=~".*agent.*"}[5m]) * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "A2A Agent high CPU usage (instance {{ $labels.instance }})"
+        description: "A2A Agent {{ $labels.pod }} CPU usage is above 80%"
+
+    - alert: A2AAgentHighMemory
+      expr: container_memory_usage_bytes{pod=~".*agent.*"} / container_spec_memory_limit_bytes{pod=~".*agent.*"} * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "A2A Agent high memory usage (instance {{ $labels.instance }})"
+        description: "A2A Agent {{ $labels.pod }} memory usage is above 80%"

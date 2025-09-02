@@ -1,0 +1,70 @@
+# Development Dependencies for Kubernetes A2A Multi-Agent System
+# Install with: pip install -r requirements-dev.txt
+
+# Include base requirements
+-r requirements.txt
+
+# Testing Framework
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+pytest-httpx>=0.30.0
+pytest-cov>=4.0.0
+pytest-mock>=3.12.0
+pytest-xdist>=3.5.0
+
+# Code Quality and Formatting
+black>=24.0.0
+isort>=5.12.0
+mypy>=1.8.0
+ruff>=0.1.0
+bandit>=1.7.5
+safety>=3.0.0
+
+# Pre-commit hooks
+pre-commit>=3.6.0
+
+# Documentation
+sphinx>=7.0.0
+sphinx-rtd-theme>=2.0.0
+myst-parser>=2.0.0
+
+# Load Testing
+locust>=2.20.0
+aiohttp>=3.10.0
+
+# Kubernetes Testing
+kubernetes>=28.1.0
+kubectl-py>=1.0.0
+
+# Monitoring and Debugging
+ipython>=8.18.0
+ipdb>=0.13.13
+memory-profiler>=0.61.0
+py-spy>=0.3.14
+
+# Type Checking
+types-requests>=2.31.0
+types-PyYAML>=6.0.12
+types-setuptools>=69.0.0
+
+# Additional Development Tools
+tox>=4.11.0
+coverage>=7.3.0
+flake8>=6.1.0
+pylint>=3.0.0
+
+# Docker and Container Testing
+docker>=7.0.0
+testcontainers>=3.7.0
+
+# API Testing
+httpx>=0.28.1
+respx>=0.20.0
+
+# Performance Testing
+py-spy>=0.3.14
+scalene>=1.5.0
+
+# Security Testing
+semgrep>=1.50.0
+pip-audit>=2.6.0

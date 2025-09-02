@@ -1,0 +1,147 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: move-orchestrator-agent
+  namespace: multi-agent-a2a
+  labels:
+    app: move-orchestrator-agent
+    component: ai-ops-agent
+    version: v1.0.0
+    tier: orchestration
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: move-orchestrator-agent
+  template:
+    metadata:
+      labels:
+        app: move-orchestrator-agent
+        component: ai-ops-agent
+        version: v1.0.0
+        tier: orchestration
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: move-orchestrator-agent
+        image: a2a-move-orchestrator-agent:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8004
+          name: http
+        - containerPort: 8084
+          name: metrics
+        env:
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: AGENT_PORT
+          value: "8004"
+        - name: METRICS_PORT
+          value: "8084"
+        - name: AGENT_HOST
+          value: "0.0.0.0"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: openai-api-key
+        - name: LANGSMITH_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: langsmith-api-key
+              optional: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8004
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /.well-known/agent-card.json
+            port: 8004
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # Advanced configuration for AI-Ops
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: cache-volume
+          mountPath: /app/cache
+      volumes:
+      - name: tmp-volume
+        emptyDir: {}
+      - name: cache-volume
+        emptyDir:
+          sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: move-orchestrator-service
+  namespace: multi-agent-a2a
+  labels:
+    app: move-orchestrator-agent
+    tier: orchestration
+spec:
+  selector:
+    app: move-orchestrator-agent
+  ports:
+  - name: http
+    port: 8004
+    targetPort: 8004
+    protocol: TCP
+  - name: metrics
+    port: 8084
+    targetPort: 8084
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: move-orchestrator-hpa
+  namespace: multi-agent-a2a
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: move-orchestrator-agent
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

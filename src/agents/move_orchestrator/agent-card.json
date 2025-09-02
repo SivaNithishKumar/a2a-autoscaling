@@ -1,0 +1,112 @@
+{
+  "name": "Move Orchestration Agent",
+  "description": "AI-powered orchestrator for complex moving operations, optimizing timelines and coordinating multiple service providers",
+  "version": "1.0.0",
+  "author": "Siva Nithish Kumar",
+  "email": "sivanithishkumar12@gmail.com",
+  "capabilities": [
+    {
+      "id": "orchestrate_move",
+      "name": "Orchestrate Move",
+      "description": "Coordinate complete moving process with timeline optimization and service provider management",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "origin": {"type": "string", "description": "Origin address"},
+          "destination": {"type": "string", "description": "Destination address"},
+          "move_date": {"type": "string", "description": "Preferred move date (YYYY-MM-DD)"},
+          "household_size": {"type": "string", "enum": ["studio", "1br", "2br", "3br", "4br+"], "description": "Size of household"},
+          "special_requirements": {"type": "array", "items": {"type": "string"}, "description": "Special moving requirements"}
+        },
+        "required": ["origin", "destination", "move_date"]
+      },
+      "examples": [
+        "Orchestrate a move from London to Manchester on 2025-09-15",
+        "Plan a complete household relocation with utility transfers and timeline optimization",
+        "Coordinate moving services for a 3-bedroom house including broadband setup"
+      ]
+    },
+    {
+      "id": "optimize_timeline",
+      "name": "Optimize Timeline",
+      "description": "Generate optimized timeline for moving process with critical path analysis",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "services": {"type": "array", "items": {"type": "string"}, "description": "List of services to coordinate"},
+          "constraints": {"type": "object", "description": "Timeline constraints and dependencies"},
+          "priority": {"type": "string", "enum": ["cost", "speed", "quality"], "description": "Optimization priority"}
+        },
+        "required": ["services"]
+      },
+      "examples": [
+        "Optimize timeline for utility transfers, broadband, and moving company coordination",
+        "Generate critical path for move with minimum disruption",
+        "Create timeline that prioritizes cost efficiency"
+      ]
+    },
+    {
+      "id": "coordinate_services",
+      "name": "Coordinate Services",
+      "description": "Manage and coordinate multiple service providers for seamless move execution",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "service_types": {"type": "array", "items": {"type": "string"}, "description": "Types of services to coordinate"},
+          "location": {"type": "string", "description": "Location for service coordination"},
+          "timeline": {"type": "string", "description": "Coordination timeline"}
+        },
+        "required": ["service_types", "location"]
+      },
+      "examples": [
+        "Coordinate utility companies, broadband providers, and moving services",
+        "Manage handover between outgoing and incoming service providers",
+        "Synchronize service activation dates across multiple providers"
+      ]
+    },
+    {
+      "id": "estimate_costs",
+      "name": "Estimate Costs",
+      "description": "Provide comprehensive cost estimates for moving operations with breakdown analysis",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "move_details": {"type": "object", "description": "Complete move specification"},
+          "service_level": {"type": "string", "enum": ["basic", "standard", "premium"], "description": "Service level selection"},
+          "include_insurance": {"type": "boolean", "description": "Include insurance costs"}
+        },
+        "required": ["move_details"]
+      },
+      "examples": [
+        "Estimate total moving costs including all services and timeline options",
+        "Provide cost breakdown with service provider comparisons",
+        "Calculate premium vs standard service cost differences"
+      ]
+    }
+  ],
+  "communication": {
+    "protocol": "a2a",
+    "version": "1.0",
+    "supported_formats": ["json", "text"],
+    "streaming": true,
+    "async": true
+  },
+  "system_requirements": {
+    "min_memory": "512MB",
+    "recommended_memory": "1GB",
+    "cpu_cores": 1,
+    "storage": "100MB"
+  },
+  "health_check": {
+    "endpoint": "/health",
+    "interval": 30,
+    "timeout": 5
+  },
+  "metrics": {
+    "endpoint": "/metrics",
+    "port": 8084,
+    "format": "prometheus"
+  },
+  "tags": ["orchestration", "moving", "timeline-optimization", "service-coordination", "ai-ops"],
+  "category": "orchestration"
+}

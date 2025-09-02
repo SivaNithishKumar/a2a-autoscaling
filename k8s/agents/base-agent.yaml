@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: base-agent
+  namespace: multi-agent-a2a
+  labels:
+    app: base-agent
+    component: agent
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: base-agent
+  template:
+    metadata:
+      labels:
+        app: base-agent
+        component: agent
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: base-agent
+        image: a2a-base-agent:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8080
+          name: metrics
+        env:
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: AGENT_PORT
+          value: "8080"
+        - name: AGENT_HOST
+          value: "0.0.0.0"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /.well-known/agent-card.json
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: base-agent-service
+  namespace: multi-agent-a2a
+  labels:
+    app: base-agent
+spec:
+  selector:
+    app: base-agent
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: base-agent-ingress
+  namespace: multi-agent-a2a
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: base-agent.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: base-agent-service
+            port:
+              number: 8080
