@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamlit-a2a-app
+  namespace: multi-agent-a2a
+  labels:
+    app: streamlit-a2a-app
+    component: frontend
+    version: v1.0.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamlit-a2a-app
+  template:
+    metadata:
+      labels:
+        app: streamlit-a2a-app
+        component: frontend
+        version: v1.0.0
+    spec:
+      containers:
+      - name: streamlit-app
+        image: python:3.12-slim
+        workingDir: /app
+        command: 
+          - /bin/bash
+          - -c
+          - |
+            pip install streamlit httpx python-dotenv a2a-sdk>=0.3.0 openai &&
+            streamlit run streamlit_a2a_app.py --server.port=8501 --server.address=0.0.0.0
+        ports:
+        - containerPort: 8501
+          name: http
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "kubernetes.default.svc.cluster.local"
+        - name: NAMESPACE
+          value: "multi-agent-a2a"
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_ENDPOINT
+              optional: true
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_KEY
+              optional: true
+        - name: AZURE_OPENAI_MODEL
+          value: "gpt-4"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8501
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: app-code
+        configMap:
+          name: streamlit-app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamlit-a2a-service
+  namespace: multi-agent-a2a
+  labels:
+    app: streamlit-a2a-app
+spec:
+  selector:
+    app: streamlit-a2a-app
+  ports:
+  - name: http
+    port: 8501
+    targetPort: 8501
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamlit-a2a-ingress
+  namespace: multi-agent-a2a
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  rules:
+  - host: streamlit-a2a.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: streamlit-a2a-service
+            port:
+              number: 8501

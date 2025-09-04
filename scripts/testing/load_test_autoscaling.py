@@ -58,15 +58,8 @@ class A2ALoadTester:
         self.session = None
         self.running = False
         
-        # Agent endpoints (assuming port-forward or ingress)
-        self.agent_endpoints = {
-            "base": "http://localhost:8080",
-            "calculator": "http://localhost:8081", 
-            "weather": "http://localhost:8082",
-            "research": "http://localhost:8083",
-            "move-orchestrator": "http://localhost:8004",
-            "infrastructure-monitor": "http://localhost:8005"
-        }
+        # Agent endpoints with Kubernetes support
+        self.agent_endpoints = self._get_agent_endpoints()
         
         # Test messages for each agent
         self.test_messages = {
@@ -101,6 +94,61 @@ class A2ALoadTester:
                 "Coordinate my office move"
             ]
         }
+    
+    def _get_agent_endpoints(self) -> Dict[str, str]:
+        """Get agent endpoints based on environment (local or Kubernetes)"""
+        import os
+        
+        # Check if running in Kubernetes environment or if K8s endpoints are specified
+        in_k8s = os.getenv("KUBERNETES_SERVICE_HOST") is not None
+        use_k8s_services = os.getenv("USE_K8S_SERVICES", "false").lower() == "true"
+        namespace = os.getenv("NAMESPACE", "multi-agent-a2a")
+        
+        if in_k8s or use_k8s_services:
+            # Kubernetes internal service discovery
+            base_url_template = "http://{service_name}.{namespace}.svc.cluster.local:{port}"
+            return {
+                "base": base_url_template.format(
+                    service_name="base-agent-service", 
+                    namespace=namespace, 
+                    port=8080
+                ),
+                "calculator": base_url_template.format(
+                    service_name="calculator-agent-service", 
+                    namespace=namespace, 
+                    port=8081
+                ),
+                "weather": base_url_template.format(
+                    service_name="weather-agent-service", 
+                    namespace=namespace, 
+                    port=8082
+                ),
+                "research": base_url_template.format(
+                    service_name="research-agent-service", 
+                    namespace=namespace, 
+                    port=8083
+                ),
+                "move-orchestrator": base_url_template.format(
+                    service_name="move-orchestrator-agent-service", 
+                    namespace=namespace, 
+                    port=8004
+                ),
+                "infrastructure-monitor": base_url_template.format(
+                    service_name="infrastructure-monitor-agent-service", 
+                    namespace=namespace, 
+                    port=8005
+                )
+            }
+        else:
+            # Local development with environment variable overrides or port-forwarded services
+            return {
+                "base": os.getenv("BASE_AGENT_URL", "http://localhost:8080"),
+                "calculator": os.getenv("CALCULATOR_AGENT_URL", "http://localhost:8081"),
+                "weather": os.getenv("WEATHER_AGENT_URL", "http://localhost:8082"),
+                "research": os.getenv("RESEARCH_AGENT_URL", "http://localhost:8083"),
+                "move-orchestrator": os.getenv("MOVE_ORCHESTRATOR_URL", "http://localhost:8004"),
+                "infrastructure-monitor": os.getenv("INFRASTRUCTURE_MONITOR_URL", "http://localhost:8005")
+            }
     
     async def create_session(self):
         """Create aiohttp session with proper configuration"""
@@ -317,8 +365,17 @@ async def main():
     parser.add_argument("--workers", type=int, default=5, help="Concurrent workers per agent")
     parser.add_argument("--agents", nargs="+", default=None, help="Target agents")
     parser.add_argument("--ramp-up", type=int, default=60, help="Ramp-up time in seconds")
+    parser.add_argument("--k8s", action="store_true", help="Use Kubernetes service endpoints")
+    parser.add_argument("--namespace", default="multi-agent-a2a", help="Kubernetes namespace")
     
     args = parser.parse_args()
+    
+    # Set environment variables for Kubernetes if specified
+    if args.k8s:
+        import os
+        os.environ["USE_K8S_SERVICES"] = "true"
+        os.environ["NAMESPACE"] = args.namespace
+        print(f"🔧 Using Kubernetes services in namespace: {args.namespace}")
     
     config = LoadTestConfig(
         duration_seconds=args.duration,
@@ -330,13 +387,26 @@ async def main():
     
     tester = A2ALoadTester(config)
     
+    # Show endpoint configuration
+    print(f"\n🎯 Target Endpoints:")
+    for agent, url in tester.agent_endpoints.items():
+        if agent in (args.agents or config.target_agents):
+            print(f"   {agent:20} -> {url}")
+    print()
+    
     try:
         await tester.run_load_test()
         tester.print_results()
         
-        print("\n🎯 Check Kubernetes HPA status:")
-        print("   kubectl get hpa -n multi-agent-a2a")
-        print("   kubectl top pods -n multi-agent-a2a")
+        print("\n🎯 Kubernetes Monitoring Commands:")
+        print(f"   kubectl get hpa -n {args.namespace}")
+        print(f"   kubectl top pods -n {args.namespace}")
+        print(f"   kubectl get pods -l component=agent -n {args.namespace}")
+        
+        if args.k8s:
+            print(f"\n📊 Check Prometheus metrics:")
+            print(f"   kubectl port-forward svc/prometheus-service 9090:9090 -n {args.namespace}")
+            print(f"   Open: http://localhost:9090")
         
     except KeyboardInterrupt:
         print("\n⏹️  Load test interrupted by user")

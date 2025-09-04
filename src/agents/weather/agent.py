@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 # Import metrics collection
-from ...common.metrics import get_agent_metrics
+from common.metrics import get_agent_metrics
 
 
 class WeatherAgent:

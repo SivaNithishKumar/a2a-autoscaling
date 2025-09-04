@@ -17,7 +17,7 @@ from datetime import datetime
 import logging
 
 # Import metrics collection
-from ...common.metrics import get_agent_metrics
+from common.metrics import get_agent_metrics
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

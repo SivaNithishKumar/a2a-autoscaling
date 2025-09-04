@@ -1,0 +1,209 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  namespace: multi-agent-a2a
+  labels:
+    app: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+      - name: load-generator
+        image: python:3.9-slim
+        command:
+        - /bin/bash
+        - -c
+        - |
+          pip install requests aiohttp &&
+          cat > /tmp/load_generator.py << 'EOF'
+          #!/usr/bin/env python3
+          import asyncio
+          import aiohttp
+          import time
+          import threading
+          import multiprocessing
+          import logging
+          import sys
+          from concurrent.futures import ThreadPoolExecutor
+          
+          logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+          logger = logging.getLogger(__name__)
+          
+          class LoadGenerator:
+              def __init__(self):
+                  self.running = True
+                  self.agent_endpoints = {
+                      "base-agent": "http://base-agent-service:8080",
+                      "calculator-agent": "http://calculator-agent-service:8081", 
+                      "weather-agent": "http://weather-agent-service:8082",
+                      "research-agent": "http://research-agent-service:8083",
+                      "move-orchestrator": "http://move-orchestrator-service:8004",
+                      "infrastructure-monitor": "http://infrastructure-monitor-service:8005"
+                  }
+              
+              def cpu_intensive_task(self, worker_id, duration=300):
+                  """CPU intensive task to stress the system"""
+                  logger.info(f"Starting CPU worker {worker_id} for {duration}s")
+                  start_time = time.time()
+                  
+                  while self.running and (time.time() - start_time) < duration:
+                      # CPU intensive calculation
+                      result = 0
+                      for i in range(500000):
+                          result += i * i * 0.5
+                          if not self.running:
+                              break
+                      
+                      # Small sleep to prevent complete CPU lockup
+                      time.sleep(0.001)
+                  
+                  logger.info(f"CPU worker {worker_id} finished")
+              
+              def memory_intensive_task(self, worker_id, duration=300):
+                  """Memory intensive task"""
+                  logger.info(f"Starting Memory worker {worker_id} for {duration}s")
+                  start_time = time.time()
+                  memory_hog = []
+                  
+                  while self.running and (time.time() - start_time) < duration:
+                      # Allocate memory in chunks
+                      try:
+                          chunk = [0] * 1000000  # ~8MB per chunk
+                          memory_hog.append(chunk)
+                          if len(memory_hog) > 50:  # Keep ~400MB max
+                              memory_hog.pop(0)
+                      except MemoryError:
+                          logger.warning("Memory limit reached")
+                          memory_hog = memory_hog[:10]  # Keep only small amount
+                      
+                      time.sleep(0.1)
+                  
+                  logger.info(f"Memory worker {worker_id} finished")
+              
+              async def http_load_task(self, session, agent_name, url, duration=300):
+                  """Generate HTTP load to agents"""
+                  logger.info(f"Starting HTTP load for {agent_name}")
+                  start_time = time.time()
+                  request_count = 0
+                  success_count = 0
+                  
+                  while self.running and (time.time() - start_time) < duration:
+                      try:
+                          async with session.get(f"{url}/health", timeout=5) as response:
+                              request_count += 1
+                              if response.status == 200:
+                                  success_count += 1
+                              
+                              if request_count % 100 == 0:
+                                  logger.info(f"{agent_name}: {success_count}/{request_count} requests successful")
+                      
+                      except Exception as e:
+                          request_count += 1
+                          if request_count % 100 == 0:
+                              logger.warning(f"{agent_name}: Error - {str(e)[:50]}")
+                      
+                      await asyncio.sleep(0.1)  # 10 RPS per agent
+                  
+                  logger.info(f"HTTP load for {agent_name} finished: {success_count}/{request_count} successful")
+              
+              async def run_http_load(self, duration=300):
+                  """Run HTTP load against all agents"""
+                  async with aiohttp.ClientSession() as session:
+                      tasks = []
+                      for agent_name, url in self.agent_endpoints.items():
+                          task = asyncio.create_task(
+                              self.http_load_task(session, agent_name, url, duration)
+                          )
+                          tasks.append(task)
+                      
+                      await asyncio.gather(*tasks)
+              
+              def run_load_test(self, duration=300):
+                  """Run comprehensive load test"""
+                  logger.info(f"🔥 Starting comprehensive load test for {duration} seconds")
+                  
+                  threads = []
+                  
+                  # Start CPU intensive threads (4 threads)
+                  for i in range(4):
+                      thread = threading.Thread(
+                          target=self.cpu_intensive_task, 
+                          args=(i, duration)
+                      )
+                      thread.daemon = True
+                      thread.start()
+                      threads.append(thread)
+                  
+                  # Start memory intensive threads (2 threads)
+                  for i in range(2):
+                      thread = threading.Thread(
+                          target=self.memory_intensive_task, 
+                          args=(i, duration)
+                      )
+                      thread.daemon = True
+                      thread.start()
+                      threads.append(thread)
+                  
+                  # Start HTTP load in async loop
+                  def run_async_http():
+                      asyncio.run(self.run_http_load(duration))
+                  
+                  http_thread = threading.Thread(target=run_async_http)
+                  http_thread.daemon = True
+                  http_thread.start()
+                  threads.append(http_thread)
+                  
+                  logger.info(f"🚀 Load test running with {len(threads)} threads")
+                  
+                  # Monitor progress
+                  start_time = time.time()
+                  while (time.time() - start_time) < duration:
+                      elapsed = time.time() - start_time
+                      remaining = duration - elapsed
+                      logger.info(f"⏱️  Load test progress: {elapsed:.1f}s elapsed, {remaining:.1f}s remaining")
+                      time.sleep(30)
+                  
+                  self.running = False
+                  logger.info("🏁 Load test completed")
+                  
+                  # Wait for threads to finish
+                  for thread in threads:
+                      thread.join(timeout=10)
+          
+          if __name__ == "__main__":
+              generator = LoadGenerator()
+              generator.run_load_test(duration=600)  # 10 minutes
+          EOF
+          
+          python3 /tmp/load_generator.py
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 2000m
+            memory: 1Gi
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: load-generator-service
+  namespace: multi-agent-a2a
+spec:
+  selector:
+    app: load-generator
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP

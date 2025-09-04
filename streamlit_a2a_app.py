@@ -55,44 +55,125 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Corrected Agent endpoints configuration based on actual startup scripts
-AGENT_ENDPOINTS = {
-    "base": {
-        "url": "http://localhost:8080",  # Updated to match quick_start_agents.sh
-        "name": "Base Agent",
-        "description": "General-purpose conversational agent for basic queries and assistance",
-        "specialties": ["general conversation", "basic questions", "help", "greetings", "coordination"]
-    },
-    "calculator": {
-        "url": "http://localhost:8081",  # Updated to match quick_start_agents.sh
-        "name": "Calculator Agent",
-        "description": "Mathematical calculations, equations, and numerical analysis",
-        "specialties": ["math", "calculations", "equations", "numbers", "arithmetic", "algebra", "statistics"]
-    },
-    "weather": {
-        "url": "http://localhost:8082",  # Updated to match quick_start_agents.sh
-        "name": "Weather Agent",
-        "description": "Weather information, forecasts, and climate data",
-        "specialties": ["weather", "forecast", "temperature", "climate", "rain", "snow", "wind"]
-    },
-    "research": {
-        "url": "http://localhost:8083",  # Updated to match quick_start_agents.sh
-        "name": "Research Agent",
-        "description": "Research assistance, information gathering, and analysis",
-        "specialties": ["research", "information", "analysis", "facts", "data", "investigation"]
-    },
-    "move_orchestrator": {
-        "url": "http://localhost:8004",
-        "name": "Move Orchestrator",
-        "description": "Moving and relocation assistance, logistics coordination",
-        "specialties": ["moving", "relocation", "logistics", "coordination", "planning", "organization"]
-    },
-    "infrastructure_monitor": {
-        "url": "http://localhost:8005",
-        "name": "Infrastructure Monitor",
-        "description": "System monitoring, infrastructure health, and performance analysis",
-        "specialties": ["monitoring", "infrastructure", "system health", "performance", "alerts", "metrics"]
-    }
-}
+# Agent endpoints configuration with Kubernetes support
+# Supports both local development and Kubernetes deployment
+def get_agent_endpoints():
+    """Get agent endpoints based on environment (local or Kubernetes)"""
+    
+    # Check if running in Kubernetes environment
+    in_k8s = os.getenv("KUBERNETES_SERVICE_HOST") is not None
+    namespace = os.getenv("NAMESPACE", "multi-agent-a2a")
+    
+    if in_k8s:
+        # Kubernetes internal service discovery
+        base_url_template = "http://{service_name}.{namespace}.svc.cluster.local:{port}"
+        endpoints = {
+            "base": {
+                "url": base_url_template.format(
+                    service_name="base-agent-service", 
+                    namespace=namespace, 
+                    port=8080
+                ),
+                "name": "Base Agent",
+                "description": "General-purpose conversational agent for basic queries and assistance",
+                "specialties": ["general conversation", "basic questions", "help", "greetings", "coordination"]
+            },
+            "calculator": {
+                "url": base_url_template.format(
+                    service_name="calculator-agent-service", 
+                    namespace=namespace, 
+                    port=8081
+                ),
+                "name": "Calculator Agent", 
+                "description": "Mathematical calculations, equations, and numerical analysis",
+                "specialties": ["math", "calculations", "equations", "numbers", "arithmetic", "algebra", "statistics"]
+            },
+            "weather": {
+                "url": base_url_template.format(
+                    service_name="weather-agent-service", 
+                    namespace=namespace, 
+                    port=8082
+                ),
+                "name": "Weather Agent",
+                "description": "Weather information, forecasts, and climate data", 
+                "specialties": ["weather", "forecast", "temperature", "climate", "rain", "snow", "wind"]
+            },
+            "research": {
+                "url": base_url_template.format(
+                    service_name="research-agent-service", 
+                    namespace=namespace, 
+                    port=8083
+                ),
+                "name": "Research Agent",
+                "description": "Research assistance, information gathering, and analysis",
+                "specialties": ["research", "information", "analysis", "facts", "data", "investigation"]
+            },
+            "move_orchestrator": {
+                "url": base_url_template.format(
+                    service_name="move-orchestrator-agent-service", 
+                    namespace=namespace, 
+                    port=8004
+                ),
+                "name": "Move Orchestrator",
+                "description": "Moving and relocation assistance, logistics coordination",
+                "specialties": ["moving", "relocation", "logistics", "coordination", "planning", "organization"]
+            },
+            "infrastructure_monitor": {
+                "url": base_url_template.format(
+                    service_name="infrastructure-monitor-agent-service", 
+                    namespace=namespace, 
+                    port=8005
+                ),
+                "name": "Infrastructure Monitor",
+                "description": "System monitoring, infrastructure health, and performance analysis",
+                "specialties": ["monitoring", "infrastructure", "system health", "performance", "alerts", "metrics"]
+            }
+        }
+    else:
+        # Local development with environment variable overrides
+        endpoints = {
+            "base": {
+                "url": os.getenv("BASE_AGENT_URL", "http://localhost:8080"),
+                "name": "Base Agent",
+                "description": "General-purpose conversational agent for basic queries and assistance",
+                "specialties": ["general conversation", "basic questions", "help", "greetings", "coordination"]
+            },
+            "calculator": {
+                "url": os.getenv("CALCULATOR_AGENT_URL", "http://localhost:8081"),
+                "name": "Calculator Agent",
+                "description": "Mathematical calculations, equations, and numerical analysis",
+                "specialties": ["math", "calculations", "equations", "numbers", "arithmetic", "algebra", "statistics"]
+            },
+            "weather": {
+                "url": os.getenv("WEATHER_AGENT_URL", "http://localhost:8082"),
+                "name": "Weather Agent",
+                "description": "Weather information, forecasts, and climate data",
+                "specialties": ["weather", "forecast", "temperature", "climate", "rain", "snow", "wind"]
+            },
+            "research": {
+                "url": os.getenv("RESEARCH_AGENT_URL", "http://localhost:8083"),
+                "name": "Research Agent",
+                "description": "Research assistance, information gathering, and analysis",
+                "specialties": ["research", "information", "analysis", "facts", "data", "investigation"]
+            },
+            "move_orchestrator": {
+                "url": os.getenv("MOVE_ORCHESTRATOR_URL", "http://localhost:8004"),
+                "name": "Move Orchestrator",
+                "description": "Moving and relocation assistance, logistics coordination",
+                "specialties": ["moving", "relocation", "logistics", "coordination", "planning", "organization"]
+            },
+            "infrastructure_monitor": {
+                "url": os.getenv("INFRASTRUCTURE_MONITOR_URL", "http://localhost:8005"),
+                "name": "Infrastructure Monitor",
+                "description": "System monitoring, infrastructure health, and performance analysis",
+                "specialties": ["monitoring", "infrastructure", "system health", "performance", "alerts", "metrics"]
+            }
+        }
+    
+    return endpoints
+
+# Get agent endpoints based on environment
+AGENT_ENDPOINTS = get_agent_endpoints()
 
 @dataclass
 class ExecutionStep:

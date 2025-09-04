@@ -5,7 +5,7 @@ import asyncio
 import functools
 from typing import Any, Callable, TypeVar, Optional
 from langsmith import traceable
-from ..config import get_config
+from config import get_config
 
 # Import reliability components
 from .reliability import (

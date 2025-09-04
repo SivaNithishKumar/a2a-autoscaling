@@ -18,7 +18,7 @@ from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
 
 # Import metrics collection
-from ...common.metrics import get_agent_metrics
+from common.metrics import get_agent_metrics
 
 # Simplified imports to avoid dependency issues
 def get_logger(name: str) -> logging.Logger:

@@ -115,7 +115,7 @@ spec:
     protocol: TCP
   type: ClusterIP
 ---
-apiVersion: v1
+apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: infrastructure-monitor-servicemonitor

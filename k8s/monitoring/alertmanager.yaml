@@ -98,7 +98,7 @@ data:
     
     - name: 'slack-notifications'
       slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+      - api_url: 'https://hooks.slack.com/services/PLACEHOLDER/PLACEHOLDER/PLACEHOLDER'
         channel: '#alerts'
         title: 'Multi-Agent A2A Alert'
         text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
@@ -106,12 +106,9 @@ data:
     - name: 'email-notifications'
       email_configs:
       - to: 'admin@multi-agent-a2a.local'
-        subject: 'Multi-Agent A2A Alert: {{ .GroupLabels.alertname }}'
-        body: |
-          {{ range .Alerts }}
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          {{ end }}
+        from: 'alertmanager@multi-agent-a2a.local'
+        subject: 'Multi-Agent A2A Alert'
+        html: 'Alert triggered in Multi-Agent A2A system'
     
     inhibit_rules:
     - source_match:
