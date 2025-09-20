@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: move-orchestrator-agent
-        image: a2a-move-orchestrator-agent:latest
+        image: a2a-move_orchestrator-agent:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8004
@@ -43,11 +43,26 @@ spec:
           value: "8084"
         - name: AGENT_HOST
           value: "0.0.0.0"
-        - name: OPENAI_API_KEY
+        - name: AZURE_OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
               name: ai-ops-secrets
-              key: openai-api-key
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_ENDPOINT
+        - name: AZURE_OPENAI_API_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_VERSION
+        - name: AZURE_OPENAI_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_MODEL
         - name: LANGSMITH_API_KEY
           valueFrom:
             secretKeyRef:

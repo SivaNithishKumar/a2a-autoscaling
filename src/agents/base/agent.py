@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -16,6 +17,9 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
+
+# Import real OpenAI client for Azure
+from openai import OpenAI
 
 # Import metrics collection
 from common.metrics import get_agent_metrics
@@ -41,12 +45,71 @@ def trace_async(operation: str, component: str):
         return wrapper
     return decorator
 
-# Simple OpenAI client for demonstration
-class SimpleAIClient:
-    """Simple AI client that returns mock responses."""
+# Azure OpenAI client for real LLM integration
+class AzureOpenAIClient:
+    """Azure OpenAI client for base agent responses."""
+    
+    def __init__(self):
+        """Initialize Azure OpenAI client with environment variables."""
+        self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        self.model = os.getenv("AZURE_OPENAI_MODEL", "gpt-4.1")
+        
+        if not self.endpoint or not self.api_key:
+            # Fallback to mock mode if credentials not available
+            self.client = None
+            self.mock_mode = True
+            logging.warning("Azure OpenAI credentials not found, using mock mode")
+        else:
+            try:
+                # Initialize OpenAI client for Azure - using Azure OpenAI format
+                from openai import AzureOpenAI
+                self.client = AzureOpenAI(
+                    api_key=self.api_key,
+                    azure_endpoint=self.endpoint,
+                    api_version=self.api_version,
+                )
+                self.mock_mode = False
+                logging.info("Azure OpenAI client initialized successfully")
+            except Exception as e:
+                logging.error(f"Failed to initialize Azure OpenAI client: {e}")
+                self.client = None
+                self.mock_mode = True
     
     async def ainvoke(self, prompt: str) -> Any:
-        """Simple mock AI response."""
+        """Simple AI response using Azure OpenAI or mock responses."""
+        logging.info(f"AzureOpenAI client initialized: {not self.mock_mode}, mock_mode: {self.mock_mode}")
+        
+        if self.mock_mode or not self.client:
+            logging.warning("Using mock response - Azure OpenAI not available")
+            return self._get_mock_response(prompt)
+        
+        try:
+            logging.info("Making Azure OpenAI API call")
+            response = self.client.chat.completions.create(
+                model=self.model,  # For Azure OpenAI, this should be the deployment name
+                messages=[
+                    {"role": "system", "content": "You are a helpful general purpose AI assistant. Provide clear, concise, and helpful responses."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.7
+            )
+            
+            class MockResponse:
+                def __init__(self, content: str):
+                    self.content = content
+            
+            logging.info("Azure OpenAI API call successful")
+            return MockResponse(response.choices[0].message.content)
+            
+        except Exception as e:
+            logging.error(f"Azure OpenAI API error: {e}, falling back to mock response")
+            return self._get_mock_response(prompt)
+    
+    def _get_mock_response(self, prompt: str):
+        """Generate mock response when API not available."""
         class MockResponse:
             def __init__(self, content: str):
                 self.content = content
@@ -59,11 +122,12 @@ class SimpleAIClient:
         elif "help" in prompt.lower():
             return MockResponse("I can help you with:\n• Answering general questions\n• Providing information on various topics\n• Engaging in conversation\n• Assisting with tasks and problem-solving\n• Explaining concepts\n\nWhat would you like assistance with?")
         else:
-            return MockResponse(f"I understand you're asking about: {prompt[:100]}{'...' if len(prompt) > 100 else ''}. While I'm running in demo mode with limited capabilities, I'm designed to be a helpful general purpose assistant. How else can I help you?")
+            return MockResponse(f"I understand you're asking about: {prompt[:100]}{'...' if len(prompt) > 100 else ''}. I'm designed to be a helpful general purpose assistant. How else can I help you?")
 
-def create_azure_chat_openai(temperature: float = 0.7) -> SimpleAIClient:
-    """Create a simple AI client for demonstration."""
-    return SimpleAIClient()
+
+def create_azure_chat_openai(temperature: float = 0.7) -> AzureOpenAIClient:
+    """Create Azure OpenAI client for the base agent."""
+    return AzureOpenAIClient()
 
 
 class BaseAgent:

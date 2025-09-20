@@ -1,11 +1,12 @@
-"""Research agent implementation - A2A Standard."""
+"""Research agent implementation - A2A Standard with real APIs."""
 
 import asyncio
 import logging
 import json
 import re
+import os
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -20,6 +21,10 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
+
+# Real API integrations
+from tavily import TavilyClient
+from openai import OpenAI
 
 # Import metrics collection
 from common.metrics import get_agent_metrics
@@ -85,12 +90,64 @@ def trace_async(operation: str, component: str):
         return wrapper
     return decorator
 
-# Simple OpenAI client for demonstration
-class SimpleAIClient:
-    """Simple AI client that returns mock responses."""
+
+class AzureOpenAIClient:
+    """Azure OpenAI client wrapper for research analysis."""
+    
+    def __init__(self):
+        """Initialize Azure OpenAI client with environment variables."""
+        # Get Azure OpenAI credentials from environment
+        self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        self.model = os.getenv("AZURE_OPENAI_MODEL", "gpt-4.1")
+        
+        if not self.endpoint or not self.api_key:
+            # Fallback to mock mode if credentials not available
+            self.client = None
+            self.mock_mode = True
+        else:
+            try:
+                # Initialize OpenAI client for Azure
+                self.client = OpenAI(
+                    api_key=self.api_key,
+                    base_url=f"{self.endpoint}openai/deployments/{self.model}",
+                    api_version=self.api_version,
+                    default_headers={"api-key": self.api_key}
+                )
+                self.mock_mode = False
+            except Exception:
+                self.client = None
+                self.mock_mode = True
     
     async def ainvoke(self, prompt: str) -> Any:
-        """Simple mock AI response."""
+        """Invoke Azure OpenAI with given prompt."""
+        if self.mock_mode or not self.client:
+            return self._mock_response(prompt)
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a helpful research assistant that provides accurate, detailed, and well-structured responses."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1000,
+                temperature=0.3
+            )
+            
+            class MockResponse:
+                def __init__(self, content: str):
+                    self.content = content
+            
+            return MockResponse(response.choices[0].message.content)
+            
+        except Exception as e:
+            logging.warning(f"Azure OpenAI API error: {e}, falling back to mock response")
+            return self._mock_response(prompt)
+    
+    def _mock_response(self, prompt: str) -> Any:
+        """Generate mock response when API not available."""
         class MockResponse:
             def __init__(self, content: str):
                 self.content = content
@@ -155,15 +212,16 @@ As a research agent, I can help with:
 • Content analysis and summarization
 • Research on specific topics
 
-Currently running in demo mode. How can I assist with your research needs?""")
+Running in demo mode. How can I assist with your research needs?""")
 
-def create_azure_chat_openai(temperature: float = 0.3) -> SimpleAIClient:
-    """Create a simple AI client for demonstration."""
-    return SimpleAIClient()
+
+def create_azure_chat_openai(temperature: float = 0.3) -> AzureOpenAIClient:
+    """Create Azure OpenAI client for research."""
+    return AzureOpenAIClient()
 
 
 class ResearchAgent:
-    """Research agent that performs web searches and analysis."""
+    """Research agent that performs web searches and analysis using real APIs."""
     
     def __init__(self):
         self.name = "Research Agent"
@@ -174,8 +232,19 @@ class ResearchAgent:
         # Initialize metrics collection with separate metrics port
         self.metrics = get_agent_metrics("research", metrics_port=9083)
         
-        # Mock data for demonstration (in production, would use real APIs)
-        self.mock_mode = True
+        # Initialize Tavily client for web search
+        self.tavily_api_key = os.getenv("TAVILY_API_KEY")
+        if self.tavily_api_key:
+            try:
+                self.tavily_client = TavilyClient(api_key=self.tavily_api_key)
+                self.search_mode = "real"
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize Tavily client: {e}")
+                self.tavily_client = None
+                self.search_mode = "mock"
+        else:
+            self.tavily_client = None
+            self.search_mode = "mock"
     
     def get_skills(self) -> List[AgentSkill]:
         """Get the skills this agent provides."""
@@ -217,12 +286,37 @@ class ResearchAgent:
     
     @trace_async("web_search", "research_agent")
     async def web_search(self, query: str, max_results: int = 5) -> Dict[str, Any]:
-        """Perform a web search for the given query."""
+        """Perform a web search for the given query using Tavily."""
         try:
             self.logger.info(f"Performing web search for: {query}")
             
-            if self.mock_mode:
-                # Mock search results for demonstration
+            if self.search_mode == "real" and self.tavily_client:
+                # Use Tavily for real search
+                response = self.tavily_client.search(
+                    query=query,
+                    max_results=max_results,
+                    include_domains=None,
+                    exclude_domains=None
+                )
+                
+                # Convert Tavily response to our format
+                results = []
+                for result in response.get('results', []):
+                    results.append({
+                        "title": result.get('title', 'No Title'),
+                        "url": result.get('url', ''),
+                        "snippet": result.get('content', '')[:200] + '...' if len(result.get('content', '')) > 200 else result.get('content', ''),
+                        "relevance": result.get('score', 0.5)
+                    })
+                
+                return {
+                    "query": query,
+                    "results": results,
+                    "total_results": len(results),
+                    "search_time": f"{response.get('response_time', 0.5):.2f} seconds"
+                }
+            else:
+                # Mock search results for demonstration when Tavily not available
                 mock_results = [
                     {
                         "title": f"Comprehensive Guide to {query}",
@@ -248,15 +342,7 @@ class ResearchAgent:
                     "query": query,
                     "results": mock_results[:max_results],
                     "total_results": len(mock_results),
-                    "search_time": "0.45 seconds"
-                }
-            else:
-                # In production, implement real search API calls here
-                # For now, return a message about configuration needed
-                return {
-                    "query": query,
-                    "results": [],
-                    "error": "Search API not configured. Please set up search service credentials."
+                    "search_time": "0.45 seconds (mock)"
                 }
                 
         except Exception as e:

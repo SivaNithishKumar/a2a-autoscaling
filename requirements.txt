@@ -44,6 +44,11 @@ lxml>=4.9.0
 numpy>=1.24.0
 pandas>=2.0.0
 
+# Real API integrations
+azure-ai-inference>=1.0.0
+tavily-python>=0.3.0
+openmeteopy>=1.0.0
+
 # Kubernetes client (for infrastructure monitoring)
 kubernetes>=28.1.0
 

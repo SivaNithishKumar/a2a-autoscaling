@@ -66,4 +66,4 @@ ENV AGENT_HOST=0.0.0.0
 ENV LOG_LEVEL=INFO
 
 # Run the agent
-CMD ["python", "-m", "multi_agent_a2a.agents.calculator", "--host", "0.0.0.0", "--port", "8081"]
+CMD ["python", "-m", "agents.calculator", "--host", "0.0.0.0", "--port", "8081"]

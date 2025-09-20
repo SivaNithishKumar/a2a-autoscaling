@@ -20,7 +20,7 @@ from a2a.types import (
     AgentSkill,
 )
 
-from .agent_executor import ResearchAgentExecutor
+from .agent import ResearchAgentExecutor
 
 
 def create_agent_card(host: str = "localhost", port: int = 8003) -> AgentCard:
