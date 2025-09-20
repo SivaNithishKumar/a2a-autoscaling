@@ -26,12 +26,18 @@ dependencies = [
     "langchain-openai>=0.2.0",
     "langsmith>=0.1.0",
     "openai>=1.0.0",
+    # Real API Dependencies
+    "openmeteopy @ git+https://github.com/m0rp43us/openmeteopy",
+    "tavily-python",
     # Core Utilities
     "python-dotenv>=1.0.0",
     "aiohttp>=3.10.0",
     "click>=8.0.0",
     "websockets>=12.0",
     "pydantic-settings>=2.0.0",
+    # Real API Integrations
+    "tavily-python>=0.3.0",
+    "openmeteopy>=0.1.0",
     # Logging and Monitoring
     "structlog>=23.0.0",
     "prometheus-client>=0.20.0",

@@ -50,6 +50,31 @@ spec:
               name: research-agent-secrets
               key: langsmith-api-key
               optional: true
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: research-agent-secrets
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: research-agent-secrets
+              key: AZURE_OPENAI_ENDPOINT
+        - name: AZURE_OPENAI_API_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: research-agent-secrets
+              key: AZURE_OPENAI_API_VERSION
+        - name: AZURE_OPENAI_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: research-agent-secrets
+              key: AZURE_OPENAI_MODEL
+        - name: TAVILY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: research-agent-secrets
+              key: TAVILY_API_KEY
         resources:
           requests:
             memory: "512Mi"

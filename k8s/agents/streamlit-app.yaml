@@ -27,6 +27,8 @@ spec:
           - /bin/bash
           - -c
           - |
+            cp /app/streamlit_a2a_app.py /tmp/streamlit_a2a_app.py &&
+            cd /tmp &&
             pip install streamlit httpx python-dotenv a2a-sdk>=0.3.0 openai &&
             streamlit run streamlit_a2a_app.py --server.port=8501 --server.address=0.0.0.0
         ports:
@@ -42,15 +44,21 @@ spec:
             secretKeyRef:
               name: ai-ops-secrets
               key: AZURE_OPENAI_ENDPOINT
-              optional: true
         - name: AZURE_OPENAI_API_KEY
           valueFrom:
             secretKeyRef:
               name: ai-ops-secrets
               key: AZURE_OPENAI_API_KEY
-              optional: true
+        - name: AZURE_OPENAI_API_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_VERSION
         - name: AZURE_OPENAI_MODEL
-          value: "gpt-4"
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_MODEL
         volumeMounts:
         - name: app-code
           mountPath: /app

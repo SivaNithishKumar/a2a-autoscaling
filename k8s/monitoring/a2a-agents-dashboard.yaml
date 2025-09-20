@@ -9,25 +9,87 @@ data:
   multi-agent-a2a-dashboard.json: |
     {
       "id": null,
-      "title": "A2A Multi-Agent System Overview",
+      "title": "Multi-Agent A2A System - Production Dashboard",
       "tags": ["a2a", "agents", "multi-agent", "orchestration"],
       "style": "dark",
       "timezone": "browser",
-        "panels": [
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "links": [],
+      "panels": [
           {
             "id": 1,
-            "title": "Agent Health Status",
+            "title": "A2A Agent CPU Usage (%)",
             "type": "stat",
             "targets": [
               {
-                "expr": "up{job=\"kubernetes-pods\",kubernetes_pod_name=~\".*agent.*\",kubernetes_namespace=\"multi-agent-a2a\"}",
-                "legendFormat": "{{pod}}"
+                "expr": "rate(container_cpu_usage_seconds_total{namespace=\"multi-agent-a2a\",pod=~\".*agent.*\"}[5m]) * 100",
+                "legendFormat": "{{pod}}",
+                "refId": "A"
               }
             ],
             "fieldConfig": {
               "defaults": {
                 "color": {"mode": "thresholds"},
-                "custom": {"displayMode": "list", "orientation": "horizontal"},
+                "custom": {"displayMode": "list", "orientation": "auto"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 50},
+                    {"color": "red", "value": 80}
+                  ]
+                },
+                "unit": "percent",
+                "min": 0,
+                "max": 100
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "A2A Agent Memory Usage",
+            "type": "stat", 
+            "targets": [
+              {
+                "expr": "container_memory_usage_bytes{namespace=\"multi-agent-a2a\",pod=~\".*agent.*\"}",
+                "legendFormat": "{{pod}}",
+                "refId": "B"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "custom": {"displayMode": "list", "orientation": "auto"},
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 1073741824},
+                    {"color": "red", "value": 2147483648}
+                  ]
+                },
+                "unit": "bytes",
+                "min": 0
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Pod Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "kube_pod_status_phase{namespace=\"multi-agent-a2a\",pod=~\".*agent.*\",phase=\"Running\"}",
+                "legendFormat": "{{pod}} - {{phase}}",
+                "refId": "C"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "custom": {"displayMode": "list", "orientation": "auto"},
                 "thresholds": {
                   "steps": [
                     {"color": "red", "value": 0},
@@ -35,152 +97,79 @@ data:
                   ]
                 },
                 "mappings": [
-                  {"options": {"0": {"text": "DOWN"}}, "type": "value"},
-                  {"options": {"1": {"text": "UP"}}, "type": "value"}
+                  {"options": {"0": {"text": "NOT RUNNING"}}, "type": "value"},
+                  {"options": {"1": {"text": "RUNNING"}}, "type": "value"}
                 ]
               }
             },
-            "gridPos": {"h": 6, "w": 24, "x": 0, "y": 0}
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
           },
           {
-            "id": 2,
-            "title": "Agent CPU Usage",
+            "id": 4,
+            "title": "HPA Scaling Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"multi-agent-a2a\"}",
+                "legendFormat": "{{horizontalpodautoscaler}} - Current",
+                "refId": "D"
+              },
+              {
+                "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"multi-agent-a2a\"}",
+                "legendFormat": "{{horizontalpodautoscaler}} - Desired",
+                "refId": "E"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "custom": {"displayMode": "list", "orientation": "auto"},
+                "unit": "short"
+              }
+            },
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Agent CPU Usage Over Time",
             "type": "timeseries",
             "targets": [
               {
                 "expr": "rate(container_cpu_usage_seconds_total{namespace=\"multi-agent-a2a\",pod=~\".*agent.*\"}[5m]) * 100",
-                "legendFormat": "{{pod}}"
+                "legendFormat": "{{pod}}",
+                "refId": "F"
               }
             ],
             "fieldConfig": {
               "defaults": {
                 "color": {"mode": "palette-classic"},
-                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10, "pointSize": 5},
                 "unit": "percent",
                 "min": 0
               }
             },
-            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
           },
           {
-            "id": 3,
-            "title": "Agent Memory Usage",
+            "id": 6,
+            "title": "Agent Memory Usage Over Time",
             "type": "timeseries",
             "targets": [
               {
                 "expr": "container_memory_usage_bytes{namespace=\"multi-agent-a2a\",pod=~\".*agent.*\"}",
-                "legendFormat": "{{pod}}"
+                "legendFormat": "{{pod}}",
+                "refId": "G"
               }
             ],
             "fieldConfig": {
               "defaults": {
                 "color": {"mode": "palette-classic"},
-                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
+                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10, "pointSize": 5},
                 "unit": "bytes",
                 "min": 0
               }
             },
-            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
-          },
-          {
-            "id": 4,
-            "title": "Agent Pod Status",
-            "type": "timeseries",
-            "targets": [
-              {
-                "expr": "kube_pod_status_phase{namespace=\"multi-agent-a2a\",pod=~\".*agent.*\"}",
-                "legendFormat": "{{pod}} - {{phase}}"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
-                "unit": "short"
-              }
-            },
-            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}
-          },
-          {
-            "id": 5,
-            "title": "Pod Replica Count",
-            "type": "timeseries",
-            "targets": [
-              {
-                "expr": "kube_deployment_status_replicas{namespace=\"multi-agent-a2a\"}",
-                "legendFormat": "{{deployment}} - Replicas"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
-                "unit": "short"
-              }
-            },
-            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14}
-          },
-          {
-            "id": 6,
-            "title": "HPA Scaling Events",
-            "type": "timeseries",
-            "targets": [
-              {
-                "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"multi-agent-a2a\"}",
-                "legendFormat": "{{horizontalpodautoscaler}} - Current"
-              },
-              {
-                "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"multi-agent-a2a\"}",
-                "legendFormat": "{{horizontalpodautoscaler}} - Desired"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
-                "unit": "short"
-              }
-            },
-            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22}
-          },
-          {
-            "id": 7,
-            "title": "HPA CPU Utilization",
-            "type": "timeseries",
-            "targets": [
-              {
-                "expr": "kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace=\"multi-agent-a2a\",metric_name=\"cpu\"}",
-                "legendFormat": "{{horizontalpodautoscaler}} - CPU %"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10},
-                "unit": "percent",
-                "min": 0
-              }
-            },
-            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22}
-          },
-          {
-            "id": 8,
-            "title": "Pod Status Overview",
-            "type": "table",
-            "targets": [
-              {
-                "expr": "kube_pod_info{namespace=\"multi-agent-a2a\"}",
-                "legendFormat": "{{pod}}"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "thresholds"},
-                "custom": {"align": "auto", "displayMode": "auto"},
-                "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}
-              }
-            },
-            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30}
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
           }
         ],
         "time": {"from": "now-1h", "to": "now"},
@@ -188,7 +177,7 @@ data:
         "templating": {"list": []},
         "annotations": {"list": []},
         "refresh": "30s",
-      "schemaVersion": 27,
-      "version": 1,
-      "links": []
-    }
+        "schemaVersion": 27,
+        "version": 1,
+        "links": []
+      }

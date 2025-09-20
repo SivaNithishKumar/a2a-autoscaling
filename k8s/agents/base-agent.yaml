@@ -39,6 +39,26 @@ spec:
           value: "8080"
         - name: AGENT_HOST
           value: "0.0.0.0"
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_ENDPOINT
+        - name: AZURE_OPENAI_API_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_VERSION
+        - name: AZURE_OPENAI_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_MODEL
         resources:
           requests:
             memory: "256Mi"

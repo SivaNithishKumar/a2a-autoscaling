@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: infrastructure-monitor-agent
-        image: a2a-infrastructure-monitor-agent:latest
+        image: a2a-infrastructure_monitor-agent:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 8005
@@ -49,6 +49,26 @@ spec:
           value: "true"
         - name: PREDICTION_MODEL_ACCURACY
           value: "0.92"
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_KEY
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_ENDPOINT
+        - name: AZURE_OPENAI_API_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_API_VERSION
+        - name: AZURE_OPENAI_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: ai-ops-secrets
+              key: AZURE_OPENAI_MODEL
         resources:
           requests:
             memory: "512Mi"
